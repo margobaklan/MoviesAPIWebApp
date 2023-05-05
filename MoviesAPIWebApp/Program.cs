@@ -1,5 +1,9 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.CodeAnalysis.Options;
 using Microsoft.EntityFrameworkCore;
 using MoviesAPIWebApp.Models;
+using Newtonsoft.Json;
+using NuGet.DependencyResolver;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,11 +11,21 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
 
 builder.Services.AddDbContext<MoviesAPIContext>(option => option.UseSqlServer(
-    builder.Configuration.GetConnectionString("DefaultConnection")
+builder.Configuration.GetConnectionString("DefaultConnection")
     ));
 builder.Services.AddControllersWithViews();
+builder.Services.AddMvc(option => option.EnableEndpointRouting = false)
+                .SetCompatibilityVersion(CompatibilityVersion.Version_3_0)
+                .AddNewtonsoftJson(opt => opt.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore);
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -24,12 +38,16 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseRouting();
 app.UseEndpoints(endpoints =>
 {
     endpoints.MapControllers();
 });
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapRazorPages();

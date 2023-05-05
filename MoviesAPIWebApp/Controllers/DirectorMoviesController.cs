@@ -28,7 +28,12 @@ namespace MoviesAPIWebApp.Controllers
           {
               return NotFound();
           }
-            return await _context.DirectorMovies.ToListAsync();
+            return await _context.DirectorMovies
+                .Include(dm => dm.Movie)
+                .ThenInclude(m => m.Genre)
+                .Include(dm => dm.Director)
+                .ToListAsync();
+            //return await _context.DirectorMovies.ToListAsync();
         }
 
         // GET: api/DirectorMovies/5
@@ -40,7 +45,11 @@ namespace MoviesAPIWebApp.Controllers
               return NotFound();
           }
             var directorMovie = await _context.DirectorMovies.FindAsync(id);
-
+            //var directorMovie = _context.DirectorMovies
+            //    .Include(dm => dm.Movie)
+            //    .Include(dm => dm.Director)
+            //    .Where(dm => dm.Id == id)
+            //    .FirstOrDefault();
             if (directorMovie == null)
             {
                 return NotFound();
@@ -89,6 +98,16 @@ namespace MoviesAPIWebApp.Controllers
           {
               return Problem("Entity set 'MoviesAPIContext.DirectorMovies'  is null.");
           }
+            var existingDirector = await _context.Directors.FindAsync(directorMovie.DirectorId);
+            var existingMovie = await _context.Movies.FindAsync(directorMovie.MovieId);
+            if (existingDirector == null || existingMovie == null)
+            {
+                return BadRequest();
+            }
+            directorMovie.MovieId = existingMovie.Id;
+            directorMovie.DirectorId = existingDirector.Id;
+            directorMovie.Director = existingDirector;
+            directorMovie.Movie = existingMovie;
             _context.DirectorMovies.Add(directorMovie);
             await _context.SaveChangesAsync();
 

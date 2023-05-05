@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MoviesAPIWebApp.Models;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MoviesAPIWebApp.Controllers
 {
@@ -28,7 +29,10 @@ namespace MoviesAPIWebApp.Controllers
           {
               return NotFound();
           }
-            return await _context.Genres.ToListAsync();
+            return await _context.Genres
+                .Include(g => g.Movies)
+                .ToListAsync();
+            //return await _context.Genres.ToListAsync();
         }
 
         // GET: api/Genres/5
@@ -39,8 +43,9 @@ namespace MoviesAPIWebApp.Controllers
           {
               return NotFound();
           }
-            var genre = await _context.Genres.FindAsync(id);
-
+            //var genre = await _context.Genres.FindAsync(id);
+            var genre = await _context.Genres.Include(i => i.Movies)
+    .FirstOrDefaultAsync(i => i.Id == id);
             if (genre == null)
             {
                 return NotFound();
@@ -58,7 +63,11 @@ namespace MoviesAPIWebApp.Controllers
             {
                 return BadRequest();
             }
-
+            //if (GenreNameExists(genre.Name))
+            //{
+            //    ModelState.AddModelError("Name", "Жанр з такою назвою вже існує");
+            //    return ValidationProblem(ModelState);
+            //}
             _context.Entry(genre).State = EntityState.Modified;
 
             try
@@ -89,6 +98,11 @@ namespace MoviesAPIWebApp.Controllers
           {
               return Problem("Entity set 'MoviesAPIContext.Genres'  is null.");
           }
+            if (GenreNameExists(genre.Name))
+            {
+                ModelState.AddModelError("Name", "Жанр з такою назвою вже існує");
+                return ValidationProblem(ModelState);
+            }
             _context.Genres.Add(genre);
             await _context.SaveChangesAsync();
 
@@ -108,7 +122,11 @@ namespace MoviesAPIWebApp.Controllers
             {
                 return NotFound();
             }
-
+            var movies = await _context.Movies.Where(m => m.GenreId == id).ToListAsync();
+            foreach(Movie m in movies)
+            {
+                m.GenreId = null;
+            }
             _context.Genres.Remove(genre);
             await _context.SaveChangesAsync();
 
@@ -118,6 +136,10 @@ namespace MoviesAPIWebApp.Controllers
         private bool GenreExists(int id)
         {
             return (_context.Genres?.Any(e => e.Id == id)).GetValueOrDefault();
+        }
+        private bool GenreNameExists(string name)
+        {
+            return (_context.Genres?.Any(e => e.Name == name)).GetValueOrDefault();
         }
     }
 }

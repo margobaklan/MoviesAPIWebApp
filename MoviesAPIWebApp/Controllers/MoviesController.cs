@@ -28,7 +28,12 @@ namespace MoviesAPIWebApp.Controllers
           {
               return NotFound();
           }
-            return await _context.Movies.ToListAsync();
+            return await _context.Movies
+                .Include(mov => mov.Genre).AsNoTracking()
+                .Include(mov => mov.DirectorMovies)
+                .ThenInclude(dm => dm.Director)
+                .ToListAsync();
+            //return await _context.Movies.ToListAsync();
         }
 
         // GET: api/Movies/5
@@ -39,13 +44,14 @@ namespace MoviesAPIWebApp.Controllers
           {
               return NotFound();
           }
-            var movie = await _context.Movies.FindAsync(id);
-
+            //var movie = await _context.Movies.FindAsync(id);
+            var movie = await _context.Movies.Include(i => i.Genre)
+    .FirstOrDefaultAsync(i => i.Id == id);
             if (movie == null)
             {
                 return NotFound();
             }
-
+            //return await _context.Entry(movie).Collection(i => i.Genre).LoadAsync();
             return movie;
         }
 
@@ -58,7 +64,11 @@ namespace MoviesAPIWebApp.Controllers
             {
                 return BadRequest();
             }
-
+            //if (MovieDescrExists(movie.Description))
+            //{
+            //    ModelState.AddModelError("Description", "Фільм з таким описом вже існує.");
+            //    return ValidationProblem(ModelState);
+            //}
             _context.Entry(movie).State = EntityState.Modified;
 
             try
@@ -89,6 +99,20 @@ namespace MoviesAPIWebApp.Controllers
           {
               return Problem("Entity set 'MoviesAPIContext.Movies'  is null.");
           }
+            if (MovieDescrExists(movie.Description))
+            {
+                ModelState.AddModelError("Description", "Фільм з таким описом вже існує.");
+                return ValidationProblem(ModelState);
+            }
+            var existingGenre = await _context.Genres.FindAsync(movie.GenreId);
+            if (existingGenre == null)
+            {
+                // Genre with the provided ID does not exist
+                return NotFound("Такого жанру не існує.");
+            }
+
+            // Associate the existing genre with the movie
+            movie.Genre = existingGenre;
             _context.Movies.Add(movie);
             await _context.SaveChangesAsync();
 
@@ -118,6 +142,10 @@ namespace MoviesAPIWebApp.Controllers
         private bool MovieExists(int id)
         {
             return (_context.Movies?.Any(e => e.Id == id)).GetValueOrDefault();
+        }
+        private bool MovieDescrExists(string description)
+        {
+            return (_context.Movies?.Any(e => e.Description == description)).GetValueOrDefault();
         }
     }
 }

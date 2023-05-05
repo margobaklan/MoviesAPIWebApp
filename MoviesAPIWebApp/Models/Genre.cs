@@ -10,7 +10,7 @@ namespace MoviesAPIWebApp.Models
         }
         public int Id { get; set; }
         [Required(ErrorMessage ="Поле не повинно бути порожнім")]
-        [Display(Name="Категорія")]
+        [Display(Name="Жанр")]
         public string Name { get; set; }
         public string Description { get; set; }
         public virtual ICollection<Movie> Movies { get; set; }

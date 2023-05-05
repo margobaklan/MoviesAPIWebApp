@@ -10,6 +10,7 @@ using MoviesAPIWebApp.Models;
 namespace MoviesAPIWebApp.Controllers
 {
     [Route("api/[controller]")]
+    //[Route("api")]
     [ApiController]
     public class DirectorsController : ControllerBase
     {
@@ -28,7 +29,12 @@ namespace MoviesAPIWebApp.Controllers
           {
               return NotFound();
           }
-            return await _context.Directors.ToListAsync();
+            return await _context.Directors
+                .Include(d => d.DirectorMovies)
+                .ThenInclude(dm => dm.Movie)
+                //.ThenInclude(m => m.Genre)
+                .ToListAsync();
+            //return await _context.Directors.ToListAsync();
         }
 
         // GET: api/Directors/5
@@ -58,7 +64,11 @@ namespace MoviesAPIWebApp.Controllers
             {
                 return BadRequest();
             }
-
+            //if (DirectorNameExists(director.Name))
+            //{
+            //    ModelState.AddModelError("Name", "Режисер з таким ім'ям вже існує");
+            //    return ValidationProblem(ModelState);
+            //}
             _context.Entry(director).State = EntityState.Modified;
 
             try
@@ -83,13 +93,29 @@ namespace MoviesAPIWebApp.Controllers
         // POST: api/Directors
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Director>> PostDirector(Director director)
+        public async Task<ActionResult<Director>> PostDirector(/*int movieId, */Director director)
         {
           if (_context.Directors == null)
           {
               return Problem("Entity set 'MoviesAPIContext.Directors'  is null.");
           }
+            if (DirectorNameExists(director.Name))
+            {
+                ModelState.AddModelError("Name", "Режисер з таким ім'ям вже існує");
+                return ValidationProblem(ModelState);
+            }
+            //var existingMovie = await _context.Movies.FindAsync(movieId);
+            //if (existingMovie == null)
+            //{
+            //    // Genre with the provided ID does not exist
+            //    return NotFound("Movie not found.");
+            //}
+            //DirectorMovie newDirectorMovie = new DirectorMovie();
+            //// Associate the existing genre with the movie
+            //newDirectorMovie.Movie = existingMovie;
+            //newDirectorMovie.Director = director;
             _context.Directors.Add(director);
+            //_context.DirectorMovies.Add(newDirectorMovie);
             await _context.SaveChangesAsync();
 
             return CreatedAtAction("GetDirector", new { id = director.Id }, director);
@@ -118,6 +144,10 @@ namespace MoviesAPIWebApp.Controllers
         private bool DirectorExists(int id)
         {
             return (_context.Directors?.Any(e => e.Id == id)).GetValueOrDefault();
+        }
+        private bool DirectorNameExists(string name)
+        {
+            return (_context.Directors?.Any(e => e.Name == name)).GetValueOrDefault();
         }
     }
 }
